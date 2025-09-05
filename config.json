@@ -1,0 +1,7 @@
+{
+  "sam_data_config": {
+    "root": "../../../Data",
+    "calc_columns": ["HOMO", "LUMO", "HOMO-LUMO Gap", "IE", "Heterosatom", "Aromaticity", "Synthesizability", "$\\lambda_{h}$"],
+    "calc_results_fn": "radia.csv"
+  }
+}
