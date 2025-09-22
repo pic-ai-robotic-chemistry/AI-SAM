@@ -1,0 +1,259 @@
+
+from rdkit import Chem
+from rdkit.Chem.rdchem import Mol, EditableMol, Atom, BondType
+from rdkit.Chem import AllChem
+import numpy as np
+
+elements=[ 'X','H' ,'He','Li','Be','B' ,  'C' ,'N' ,'O' ,'F' ,'Ne',
+           'Na','Mg','Al','Si','P' ,  'S' ,'Cl','Ar','K' ,'Ca',
+           'Sc','Ti','V' ,'Cr','Mn',  'Fe','Co','Ni','Cu','Zn',
+           'Ga','Ge','As','Se','Br',  'Kr','Rb','Sr','Y' ,'Zr',
+           'Nb','Mo','Tc','Ru','Rh',  'Pd','Ag','Cd','In','Sn',
+           'Sb','Te','I' ,'Xe','Cs',  'Ba','La','Ce','Pr','Nd',
+           'Pm','Sm','Eu','Gd','Tb',  'Dy','Ho','Er','Tm','Yb',
+           'Lu','Hf','Ta','W' ,'Re',  'Os','Ir','Pt','Au','Hg',
+           'Tl','Pb','Bi','Po','At',  'Rn','Fr','Ra','Ac','Th',
+           'Pa','U' ,'Np','Pu','Am',  'Cm','Bk','Cf','Es','Fm',
+           'Md','No','Lr','Rf','Db',  'Sg','Bh','Hs','Mt','Ds',
+           'Rg', 'Uub','Uut','Uuq','Uup',  'Uuh']
+
+
+class MolUtils:
+
+    @classmethod
+    def frag_idxes_to_mol(cls, mol: Mol, idxes: [int]):
+        em = EditableMol(Mol())
+        idxes_old_to_new = {}
+        for i, idx in enumerate(idxes):
+            em.AddAtom(mol.GetAtomWithIdx(idx))
+            idxes_old_to_new[idx] = i
+
+        for i, idx in enumerate(idxes):
+            atom = mol.GetAtomWithIdx(idx)
+            for bond in atom.GetBonds():
+                if bond.GetBeginAtomIdx() == idx:
+                    other_idx = bond.GetEndAtomIdx()
+                else:
+                    other_idx = bond.GetBeginAtomIdx()
+                if other_idx < idx:
+                    continue
+                if other_idx in idxes_old_to_new.keys():
+                    em.AddBond(idxes_old_to_new[idx], idxes_old_to_new[other_idx], bond.GetBondType())
+        res = em.GetMol()
+        res.ClearComputedProps()
+        AllChem.GetSymmSSSR(res)
+        res.UpdatePropertyCache(False)
+        res._idxMap = idxes_old_to_new
+        return res, idxes_old_to_new
+
+    @classmethod
+    def frag_idxes_to_mol_with_link(cls, mol: Mol, idxes: [int]):
+        frag, idxes_old_to_new = cls.frag_idxes_to_mol(mol, idxes)
+        edit_frag = AllChem.EditableMol(frag)
+        idx = frag.GetNumAtoms()
+        _idxes_old_to_new = {}
+        link_idxes = []
+        for old_idx, new_idx in idxes_old_to_new.items():
+            old_atom = mol.GetAtomWithIdx(old_idx)
+            old_nbr_atoms = old_atom.GetNeighbors()
+            for old_nbr_atom in old_nbr_atoms:
+                if old_nbr_atom.GetIdx() not in idxes_old_to_new.keys():
+                    new_atom_idx = edit_frag.AddAtom(old_nbr_atom)
+                    link_idxes.append(new_atom_idx)
+                    bond = mol.GetBondBetweenAtoms(old_nbr_atom.GetIdx(), old_atom.GetIdx())
+                    edit_frag.AddBond(idx, new_idx, bond.GetBondType())
+                    _idxes_old_to_new[old_nbr_atom.GetIdx()] = idx
+                    idx += 1
+        idxes_old_to_new.update(_idxes_old_to_new)
+        res = edit_frag.GetMol()
+
+        res.ClearComputedProps()
+        AllChem.GetSymmSSSR(res)
+        res.UpdatePropertyCache(False)
+        for link_idx in link_idxes:
+            link_atom = res.GetAtomWithIdx(link_idx)
+            link_atom.SetAtomMapNum(9)
+        # print(AllChem.MolToSmiles(mol))
+        return res, idxes_old_to_new, list(_idxes_old_to_new.values())
+
+    @classmethod
+    def smiles_to_molfile(cls, smiles, filename):
+        """
+        将 SMILES 转换为 .mol 文件
+
+        :param smiles: 分子的 SMILES 字符串
+        :param filename: 输出的 .mol 文件名
+        """
+        # 将 SMILES 转换为 RDKit 分子对象
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            raise ValueError("无效的 SMILES 字符串！")
+
+        # 添加氢原子
+        mol = Chem.AddHs(mol)
+        # 生成 3D 坐标
+        AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+
+        # 优化 3D 结构
+        AllChem.UFFOptimizeMolecule(mol)  # 或者使用 AllChem.MMFFOptimizeMolecule(mol)
+
+        # 写入 .mol 文件
+        Chem.MolToMolFile(mol, filename)
+        print(f".mol 文件已生成: {filename}")
+
+    @classmethod
+    def smiles_to_gjf_file(cls, smiles, code, filename, charge=0, spin=1):
+        """
+        将 SMILES 转换为 .mol 文件
+
+        :param spin:
+        :param charge:
+        :param smiles: 分子的 SMILES 字符串
+        :param filename: 输出的 .mol 文件名
+        """
+        # 将 SMILES 转换为 RDKit 分子对象
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            raise ValueError("无效的 SMILES 字符串！")
+
+        # 添加氢原子
+        mol = Chem.AddHs(mol)
+        # 生成 3D 坐标
+        AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+
+        # 优化 3D 结构
+        AllChem.UFFOptimizeMolecule(mol)  # 或者使用 AllChem.MMFFOptimizeMolecule(mol)
+
+        # 获取分子原子坐标
+        conf = mol.GetConformer()
+
+        # 创建.gjf文件内容
+        gjf_content = f"%chk=out_{code}.chk\n"
+        gjf_content += f"%mem=20GB\n"
+        gjf_content += f"%nprocshared=16\n"
+        gjf_content += f"#p opt freq b3lyp/6-311g(d,p) scf=xqc int=ultrafine\n\n"
+        gjf_content += f"Generated by RDKit\n\n"
+        gjf_content += f"{charge} {spin}\n"
+
+        for atom in mol.GetAtoms():
+            pos = conf.GetAtomPosition(atom.GetIdx())
+            gjf_content += f"{atom.GetSymbol()}    {pos.x:.6f}    {pos.y:.6f}    {pos.z:.6f}\n"
+
+        gjf_content += "\n"
+
+        # 写入文件
+        with open(filename, "w") as f:
+            f.write(gjf_content)
+        print(f"GJF文件已生成: {filename}")
+
+    @classmethod
+    def fchk_xyz(cls, fchknam):
+        with open(fchknam) as f:
+            readatom=False
+            readcoord=False
+            allelements=[]
+            allxyzs=[]
+            for n,i in enumerate(f.readlines()):  
+                if 'Multiplicity' in i:
+                    multi=int(i.split( )[-1])
+                if 'Charge                                     I' in i:
+                    charge=int(i.split( )[-1])
+                if readatom and 'N=' in i:
+                    readatom=False
+                if readatom:
+                    allelements+=i.split( )
+                if 'Atomic numbers' in i:
+                    readatom=True
+                if readcoord and '  I' in i:
+                    readcoord=False
+                if readcoord:
+                    allxyzs+=i.split( )
+                if 'cartesian coordinates' in i:
+                    readcoord=True
+
+
+        allelements=[elements[int(j)] for j in allelements]
+        allxyzs=np.array(allxyzs,dtype='float64').reshape((-1,3))/1.8897259886 # To Angstrong
+
+        return allelements,allxyzs,charge,multi
+
+    @classmethod
+    def read_fchk(cls, fchk_file):
+        """
+        从 fchk 文件中提取原子类型和坐标
+        """
+        atomic_numbers = []
+        coordinates = []
+
+        with open(fchk_file, 'r') as file:
+            lines = file.readlines()
+            # 提取原子序号
+            for i, line in enumerate(lines):
+                if "Atomic numbers" in line:
+                    num_atoms = int(line.split()[-1])  # 原子数量
+                    atom_lines = []
+                    for cl in lines[i+1:]:
+                        if cl[0].isalpha():
+                            break
+                        atom_lines.append(cl)
+                    atomic_numbers = list(map(int, " ".join(atom_lines).split()))
+                    # atomic_numbers = list(map(int, lines[i + 1].split()))
+                    break
+
+            # 提取坐标
+            for i, line in enumerate(lines):
+                if "Current cartesian coordinates" in line:
+                    coor_lines = []
+                    for cl in lines[i+1:]:
+                        if cl[0].isalpha():
+                            break
+                        coor_lines.append(cl)
+                    coords = list(map(float, " ".join(coor_lines).split()))
+                    coordinates = [coords[j:j + 3] for j in range(0, len(coords), 3)]
+                    break
+
+        return atomic_numbers, coordinates
+
+    @classmethod
+    def atomic_number_to_symbol(cls, atomic_number):
+        """
+        将原子序号转换为元素符号
+        """
+        periodic_table = [
+            "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne",
+            "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca",
+            # 可扩展更多元素
+        ]
+        return periodic_table[atomic_number - 1]  # 数组从 0 开始
+
+    @classmethod
+    def fchk_to_gjf(cls, fchk_file, output_file, n, charge=1, multiplicity=2):
+        """
+        生成 .gjf 文件
+        """
+        # atomic_numbers, coordinates = cls.read_fchk(fchk_file)
+        symbols, coordinates, _, __ = cls.fchk_xyz(fchk_file)
+        with open(output_file, 'w') as file:
+            # Header 部分
+            file.write(f"%chk=mol_{n}.chk\n")
+            file.write("%mem=20GB\n")
+            file.write("%nprocshared=16\n")
+            file.write("#p b3lyp/6-311g(d,p) scf=xqc stable=opt\n\n")
+            file.write("Cation \n\n")
+            file.write(f"{charge} {multiplicity}\n")
+
+            # 写入原子坐标
+            for symbol, coord in zip(symbols, coordinates):
+                x, y, z = coord
+                file.write(f"{symbol:2} {x:15.8f} {y:15.8f} {z:15.8f}\n")
+
+            file.write("\n")
+
+
+if __name__ == '__main__':
+    # MolUtils.smiles_to_molfile('O=P(O)(O)C1=CC=C(C2C(C=CC3=C4C=CC=C3)=C4C5=C2C=CC(SC)=C5)C=C1', '../data/target.mol')
+    # smi = "O=P(O)(O)C1=CC=C(N2C(C=CC3=C4C=CC=C3)=C4C5=C2C=CC=C5)C=C1"
+    smi = "OP(CCn1c(cccc2)c2c3c1cccc3)(O)=O"
+    # MolUtils.smiles_to_gjf_file(smi, 'test','../data_calc/mol_test/mol_test.gjf')
+    MolUtils.fchk_to_gjf(r'C:\Users\zhang\OneDrive\ProjectsPostDoc\SolarDesigner\Code\solar_designer\data_calc\mol_2\out_2.fchk', './sam_a_anion.gjf', 1)
+

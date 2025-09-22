@@ -6,11 +6,11 @@ Efficient design of perovskite SAM molecules based on quantum chemical calculati
 
 ## Requirements
 
-1. rdkit
-2. matplotlib
-3. seaborn
-4. pandas
-5. numpy
+Python = 3.10
+
+```bash
+pip install -r requirements.txt
+```
 
 ## Configuration
 
