@@ -30,11 +30,15 @@ Edit the config file: config.json
 
 ### 1. Functional Groups Extraction
 
+Extract molecules with a carbazole substructure from the PubChem database and identify the groups attached to the carbazole.
+
 ```bash
 python ai_sam/funtional_groups_extraction_process.py
 ```
 
 ### 2. Molecule Generation
+
+Attach the selected groups to the carbazole, one to two groups at a time, to generate candidate molecules.
 
 ```bash
 python ai_sam/mol_gen_process.py
@@ -42,11 +46,15 @@ python ai_sam/mol_gen_process.py
 
 ### 3. High-throughput Theoretical Calculation
 
+Read the generated candidate molecules, parse their molecular structures from SMILES strings, optimize their conformations using the UFFO force field, and then generate Gaussian input files.(The Gaussian calculations need to be performed by the user)
+
 ```bash
 python ai_sam/dft_process.py
 ```
 
 ### 4. Molecule Screening and Ranking
+
+Rank the candidate molecules based on theoretical calculation metrics such as HOMO, LUMO, etc.
 
 ```bash
 python ai_sam/sort_process.py
@@ -54,13 +62,8 @@ python ai_sam/sort_process.py
 
 ### 5. Data Analysis
 
+Data analysis, including correlation analysis and more.
+
 ```bash
 python ai_sam/analysis_process.py
 ```
-
-## References
-
-* Retrosynthetic Analysis:
-
-(1) Zhang, B.; Zhang, X.; Du, W.; Song, Z.; Zhang, G.; Zhang, G.; Wang, Y.; Chen, X.; Jiang, J.; Luo, Y. Chemistry-Informed Molecular Graph as Reaction Descriptor for Machine-Learned Retrosynthesis Planning. Proc. Natl. Acad. Sci. U. S. A. 2022, 119 (41), e2212711119. https://doi.org/10.1073/pnas.2212711119.
-
