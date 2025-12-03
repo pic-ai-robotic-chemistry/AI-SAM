@@ -2,7 +2,7 @@
 
 Efficient design of perovskite SAM molecules based on quantum chemical calculations and artificial intelligence.
 
-## TOC
+
 - [Overview](#overview)
 - [System Requirements](#system-requirements)
 - [Install Dependencies](#install-dependencies)
