@@ -71,10 +71,7 @@ class GaussianCalc:
                 MolUtils.fchk_to_gjf(fchk_fp, gjf_fp, mid, charge=0, multiplicity=1)
 
     def prepare_init_tzvp_files(self):
-        # mol_df = pd.read_csv(self.config.candidate_combine_fp, sep='\t')
-        # for n, (_, row) in enumerate(mol_df.iterrows()):
         for n in range(300):
-            # smiles = row['smiles']
             dp = f'../data_calc/mol_{n}'
             fchk_fp = os.path.join(dp, f'out_{n}.fchk')
             gjf_fp = os.path.join(dp, f'mol_tzvp_{n}.gjf')
@@ -99,15 +96,6 @@ class GaussianCalc:
         return energy
 
     def extract_dipole_moment_from_fchk(self, fchk_file):
-        """
-        从Gaussian .fchk文件中提取偶极矩(dipole moment)信息。
-
-        参数:
-            fchk_file (str): .fchk文件的路径。
-
-        返回:
-            tuple: 偶极矩的三个分量 (dx, dy, dz) 和总偶极矩 (total_dipole)。
-        """
         dipole_moment = []
         with open(fchk_file, 'r') as file:
             for line in file:
@@ -167,12 +155,4 @@ class GaussianCalc:
 
 
 if __name__ == '__main__':
-    conf = ConfigUtils.load_config('../config.json').solar_config
-    gc = GaussianCalc(conf)
-    # gc.prepare_neural_to_cation_init_file()
-    # gc.prepare_cation_init_file()
-    gc.extract_hole_re()
-    # gc.prepare_cation_to_neural_init_file()
-    # gc.prepare_init_files()
-    # gc.prepare_init_tzvp_files()
-    # gc.extract_dipole_moment()
+    pass

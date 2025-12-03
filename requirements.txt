@@ -1,3 +1,4 @@
+rdkit
 matplotlib
 seaborn
 pandas
